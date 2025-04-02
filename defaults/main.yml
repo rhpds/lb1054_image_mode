@@ -1,2 +1,9 @@
 ---
 lb1054_image_mode_config: true
+
+certbot_cert_manager_zerossl_eab_key_id: unknown
+certbot_cert_manager_zerossl_hmac_key: unknown
+certbot_cert_manager_acme_url: https://acme.zerossl.com/v2/DV90
+
+lb1054_image_mode_registry_encrypt_email: "{{ email | default('devops@opentlc.com') }}"
+lb1054_image_mode_registry_hostname: "node.{{guid}}.{{ cluster_dns_zone }}"

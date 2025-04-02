@@ -1,18 +1,4 @@
 ---
-- become: true
-  block:
-  # - name: Update /etc/containers/registries.conf for local registry
-  #   ansible.builtin.blockinfile:
-  #     path: /etc/containers/registries.conf
-  #     insertafter: 'unqualified-search-registries = ["registry.access.redhat.com", "registry.redhat.io", "docker.io"]'
-  #     block: |
-  #       [[registry]]
-  #       prefix = "localhost.localdomain"
-  #       location = "localhost:5000"
-  #       insecure = true
 
-  - name: Create the local registry pod for images
-    ansible.builtin.command: "mkdir -p /opt/registry/data"
-
-  - name: Create the local registry pod for images
-    ansible.builtin.command: "podman run -d --name registry -p 80:5000 -v /opt/registry/data:/var/lib/registry:z --restart always docker.io/library/registry:2"
+- name: Include registry pod
+  include_tasks: registry.yml

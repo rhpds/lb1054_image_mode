@@ -1,0 +1,65 @@
+---
+- name: Enable EPEL
+  ansible.builtin.dnf:
+    name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+    state: present
+    disable_gpg_check: true
+
+- name: Install nginx and certbot packages
+  ansible.builtin.dnf:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+      - python3-pyOpenSSL
+    state: latest  # so that EPEL packages can upgrade RHEL ones
+
+- name: Remove EPEL after usage
+  ansible.builtin.dnf:
+    name: "epel-release"
+    state: absent
+
+- name: Generate certbot certificate (ZeroSSL)
+  ansible.builtin.command: >-
+    certbot certonly --nginx
+    --eab-kid "{{ certbot_cert_manager_zerossl_eab_key_id }}"
+    --eab-hmac-key "{{ certbot_cert_manager_zerossl_hmac_key }}"
+    --server "{{ certbot_cert_manager_acme_url }}"
+    -m {{ lb1054_image_mode_registry_encrypt_email | regex_replace('example.com$','opentlc.com') }}
+    -d {{ lb1054_image_mode_registry_hostname }}
+    --noninteractive
+    --agree-tos
+
+- name: Create registry pod directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+  loop:
+    - /opt/registry/certs
+    - /opt/registry/data
+
+- name: Copy ZeroSSL Cert
+  ansible.builtin.copy:
+    src: /etc/letsencrypt/live/{{ lb1054_image_mode_registry_hostname }}/fullchain.pem
+    dest: /opt/registry/certs/registry.crt
+    remote_src: yes
+    mode: 0644
+
+- name: Copy ZeroSSL key
+  ansible.builtin.copy:
+    src: /etc/letsencrypt/live/{{ lb1054_image_mode_registry_hostname }}/privkey.pem
+    dest: /opt/registry/certs/registry.key
+    remote_src: yes
+    mode: 0644
+
+- name: Create the local registry pod for images
+  ansible.builtin.command: >-
+    podman run -d --name registry
+    -p 443:5000
+    -v /opt/registry/data:/var/lib/registry:z
+    -v /opt/registry/certs:/certs:z
+    -e "REGISTRY_HTTP_TLS_CERTIFICATE=/certs/registry.crt"
+    -e "REGISTRY_HTTP_TLS_KEY=/certs/registry.key"
+    --restart always
+    docker.io/library/registry:2
